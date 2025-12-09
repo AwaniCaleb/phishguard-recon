@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+
 import requests
 
 class PhishGuard:
@@ -33,6 +35,36 @@ class PhishGuard:
         except requests.RequestException as e:
             print(f"[!] Error fetching URL {url}: {e}")
             return None
+        
+    def extract_links(self, html_content: str) -> list:
+        """
+        Parses HTML content to extract all URLs from <a> tags.
+
+        Args:
+            html_content (str): The raw HTML content string.
+
+        Returns:
+            list[str]: A list of all unique URLs found in the 'href' attributes.
+        """
+        try:
+            if not html_content:
+                raise ValueError("The HTML content provided is empty.")
+            
+            # Initialize Beautiful Soup object
+            soup = BeautifulSoup(html_content, 'lxml')
+
+            # Find all <a> tags
+            all_a_tags = soup.find_all('a')
+
+            # Extract href attributes and ensure uniqueness
+            links = {
+                tag.get('href') for tag in all_a_tags if tag.get('href')
+            }
+
+            return list(links)
+        except Exception as e:
+            print(f"[!] {e}")
+            return []
 
 if __name__ == "__main__":
     phish_tool = PhishGuard()
@@ -42,5 +74,8 @@ if __name__ == "__main__":
     if html_content:
         print(f"[+] Successfully fetched {len(html_content)} bytes of HTML.")
 
-    print("\n--- Testing Invalid URL ---")
-    phish_tool.fetch_html("https://this-domain-does-not-exist-123456.com")
+        links = phish_tool.extract_links(html_content)
+        print(f"[+] Extracted {len(links)} unique links:")
+        
+        for link in links:
+            print(f"    - {link}")
