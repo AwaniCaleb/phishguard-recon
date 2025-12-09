@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 import requests
 
@@ -65,17 +66,54 @@ class PhishGuard:
         except Exception as e:
             print(f"[!] {e}")
             return []
+    
+    def analyze_links(self, links: list, base_url: str) -> list[str]:
+        """
+        Filters and normalizes extracted links, converting relative URLs to absolute ones.
+
+        Args:
+            links (list): A list of URLs extracted from HTML content.
+            base_url (str): The base URL of the site being analyzed.
+        
+        Returns:
+            list[str]: A list of clean, absolute, and unique URLs.
+        """
+        if not links:
+            return []
+        
+        # Automatically ensure links are unique
+        clean_links = set()
+        
+        for link in links:
+            # Filter out non-http links
+            if link.startswith(('#', 'mailto:', 'javascript:', 'tel:')):
+                continue
+
+            # Relative links to absolute using urljoin
+            absolute_link = urljoin(base_url, link)
+
+            # Add link to the set
+            clean_links.add(absolute_link)
+
+        return list(clean_links)
 
 if __name__ == "__main__":
+    url = "https://google.com"
+
     phish_tool = PhishGuard()
 
     print("\n--- Testing Valid URL ---")
-    html_content = phish_tool.fetch_html("https://google.com")
+    html_content = phish_tool.fetch_html(url)
     if html_content:
         print(f"[+] Successfully fetched {len(html_content)} bytes of HTML.")
 
-        links = phish_tool.extract_links(html_content)
-        print(f"[+] Extracted {len(links)} unique links:")
+        raw_links = phish_tool.extract_links(html_content)
+
+        print(f"[+] Extracted {len(raw_links)} raw links.")
+
+        links = phish_tool.analyze_links(raw_links, url) 
+    
+        print(f"[+] Extracted {len(links)} unique, clean links:")
         
         for link in links:
             print(f"    - {link}")
