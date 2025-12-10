@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from Levenshtein import distance as levenshtein_distance
 
 import requests
 
@@ -96,6 +97,20 @@ class PhishGuard:
             clean_links.add(absolute_link)
 
         return list(clean_links)
+    
+    def calculate_similarity(self, s1: str, s2: str) -> int:
+        try:
+            if not s1 or not s2:
+                raise ValueError("One or both HTML contents are empty.")
+
+            # Calculate Levenshtein distance
+            dist = levenshtein_distance(s1.lower(), s2.lower())
+
+            return dist
+
+        except Exception as e:
+            print(f"[!] Similarity calculation failed: {e}")
+            return max(len(s1), len(s2))
 
 if __name__ == "__main__":
     url = "https://google.com"
