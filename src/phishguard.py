@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from Levenshtein import distance as levenshtein_distance
 
 import requests
@@ -10,9 +10,16 @@ class PhishGuard:
     Handles fetching data, parsing HTML, and comparing site similarity.
     """
     def __init__(self):
-        pass
+        # Initialize the list of legitimate URLs for comparison
+        self.legitimate_domains: list[str] = [
+            "https://www.google.com",
+            "https://www.facebook.com",
+            "https://www.amazon.com",
+            "https://www.twitter.com",
+            "https://www.microsoft.com"
+        ]
     
-    def fetch_html(self, url: str) -> str or None:
+    def fetch_html(self, url: str) -> str | None:
         """
         Fetches the HTML content from a given URL.
 
@@ -99,18 +106,89 @@ class PhishGuard:
         return list(clean_links)
     
     def calculate_similarity(self, s1: str, s2: str) -> int:
+        """
+        Calculates the Levenshtein distance between two strings (e.g., domain names).
+
+        Args:
+            s1 (str): The first string to compare.
+            s2 (str): The second string to compare.
+
+        Returns:
+            int: The Levenshtein distance (number of edits).
+        """
         try:
             if not s1 or not s2:
-                raise ValueError("One or both HTML contents are empty.")
+                # If a string is empty, the distance is the length of the other string
+                return len(s1) + len(s2)
 
-            # Calculate Levenshtein distance
-            dist = levenshtein_distance(s1.lower(), s2.lower())
+            # Convert to lowercase to ensure case-insensitive comparison (critical for domains)
+            dist = levenshtein_distance(s1.lower(), s2.lower()) # <-- .lower() added
 
             return dist
 
         except Exception as e:
             print(f"[!] Similarity calculation failed: {e}")
-            return max(len(s1), len(s2))
+            # Return a large distance on failure
+            return max(len(s1) + 1, len(s2) + 1)
+
+    def check_typo_squatting(self, target_url: str, legitimate_domains: list) -> list[str] | None:
+        """
+        Checks if the target URL is a potential typo-squatting of any legitimate URLs.
+
+        Args:
+            target_url (str): The suspicious URL to check.
+            legitimate_domains (list): A list of known legitimate URLs.
+        Returns:
+            list[str]: A list of legitimate URLs that are similar to the target URL.
+        """
+        try:
+            if not target_url or not legitimate_domains:
+                raise ValueError("Target URL or legitimate URLs list is empty.")
+
+            html_content = self.fetch_html(target_url)
+
+            if not html_content:
+                print(f"[!] Could not proceed with analysis for {target_url}.")
+                return
+
+            raw_links = self.extract_links(html_content)
+            clean_links = self.analyze_links(raw_links, target_url)
+
+            print(f"\n--- Checking {len(clean_links)} Extracted Links for Typo Squatting ---")
+
+            suspicious_domains = set()
+
+            for link in clean_links:
+                hostname = urlparse(link).netloc
+
+                domain = hostname.split('.')[-2] + '.' + hostname.split('.')[-1] if hostname.count('.') > 1 and hostname.split('.')[-2] != 'co' else hostname
+
+                if domain == urlparse(target_url).netloc.split('.')[-2] + '.' + urlparse(target_url).netloc.split('.')[-1]:
+                    continue
+
+                for legit_domain in legitimate_domains:
+                    legit_domain_base = legit_domain.lower().split('.')[-2] + '.' + legit_domain.lower().split('.')[-1]
+                    
+                    threshold = 2 if len(legit_domain_base) <= 7 else 3
+                    distance = self.calculate_similarity(domain, legit_domain_base)
+
+                    if distance > 0 and distance <= threshold:
+                        warning = f"[!!! WARNING: TYPO SQUAT DETECTED !!!]\n"
+                        warning += f"   - Domain on Phishing Page: {domain}\n"
+                        warning += f"   - Resembles Legitimate Target: {legit_domain_base}\n"
+                        warning += f"   - Levenshtein Distance: {distance}"
+                        suspicious_domains.add(warning)
+
+            if suspicious_domains:
+                for warning in suspicious_domains:
+                    print(warning)
+            else:
+                print("[+] No strong typo-squatting indicators found in extracted links.")
+
+            
+        except Exception as e:
+            print(f"[!] Typo-squatting check failed: {e}")
+            return []
 
 if __name__ == "__main__":
     url = "https://google.com"
