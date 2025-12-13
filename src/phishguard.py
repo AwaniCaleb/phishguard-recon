@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from Levenshtein import distance as levenshtein_distance
 
-import requests
+import requests, ssdeep
 
 class PhishGuard:
     """
@@ -189,6 +189,51 @@ class PhishGuard:
         except Exception as e:
             print(f"[!] Typo-squatting check failed: {e}")
             return []
+    
+    def compare_page_content(self, target_url: str, legitimate_url: str) -> bool:
+        """
+        Compares the HTML content of the target URL with a legitimate URL.
+
+        Args:
+            target_url (str): The suspicious URL to check.
+            legitimate_url (str): The known legitimate URL to compare against.
+
+        Returns:
+            float or None: Similarity percentage between the two pages, or None on failure.
+        """
+        try:
+            target_html = self.fetch_html(target_url)
+            legit_html = self.fetch_html(legitimate_url)
+
+            if not target_html or not legit_html:
+                raise ValueError(f"[!] Could not fetch HTML for comparison between {target_url} and {legitimate_url}.")
+
+            # Simple similarity metric: ratio of common substrings to total length
+            target_set = set(target_html.split())
+            legit_set = set(legit_html.split())
+
+            common_words = target_set.intersection(legit_set)
+            total_words = target_set.union(legit_set)
+
+            similarity_percentage = (len(common_words) / len(total_words)) * 100 if total_words else 0.0
+
+            target_hash = ssdeep.hash(target_html)
+            legit_hash = ssdeep.hash(legit_html)
+
+            score = ssdeep.compare(target_hash, legit_hash)
+
+            if score > 50:
+                print(f"[!!! WARNING: HIGH CONTENT SIMILARITY DETECTED !!!]")
+                print(f"   - Target URL: {target_url}")
+                print(f"   - Legitimate URL: {legitimate_url}")
+                print(f"   - SSDEEP Similarity Score: {score}")
+                print(f"   - Word-based Similarity Percentage: {similarity_percentage:.2f}%")
+
+            return True
+
+        except Exception as e:
+            print(f"[!] Page content comparison failed: {e}")
+            return False
 
 if __name__ == "__main__":
     url = "https://google.com"
