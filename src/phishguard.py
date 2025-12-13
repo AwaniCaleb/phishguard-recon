@@ -253,22 +253,12 @@ class PhishGuard:
         print(f"=== Analysis Completed for {target_url} ===\n")
 
 if __name__ == "__main__":
-    url = "https://google.com"
+    notreal_url = "https://www.example-phishingsite.com"
+    suspicious_url = "https://www.gooogle.com" 
 
     phish_tool = PhishGuard()
 
-    print("\n--- Testing Valid URL ---")
-    html_content = phish_tool.fetch_html(url)
-    if html_content:
-        print(f"[+] Successfully fetched {len(html_content)} bytes of HTML.")
+    # --- Run the full analysis ---
+    phish_tool.run_analysis(notreal_url)
 
-        raw_links = phish_tool.extract_links(html_content)
-
-        print(f"[+] Extracted {len(raw_links)} raw links.")
-
-        links = phish_tool.analyze_links(raw_links, url) 
-    
-        print(f"[+] Extracted {len(links)} unique, clean links:")
-        
-        for link in links:
-            print(f"    - {link}")
+    phish_tool.run_analysis(suspicious_url)
