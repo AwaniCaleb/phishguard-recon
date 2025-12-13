@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from Levenshtein import distance as levenshtein_distance
 
-import requests, ssdeep
+import requests, ssdeep, argparse
 
 class PhishGuard:
     """
@@ -252,13 +252,26 @@ class PhishGuard:
 
         print(f"=== Analysis Completed for {target_url} ===\n")
 
-if __name__ == "__main__":
-    notreal_url = "https://www.example-phishingsite.com"
-    suspicious_url = "https://www.gooogle.com" 
+def main():
+    """
+    Main function to parse command-line arguments and start the analysis.
+    """
+    parser = argparse.ArgumentParser(
+        description="PhishGuard: A multi-stage reconnaissance tool for detecting phishing.",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
 
+    parser.add_argument(
+        'target_url', 
+        type=str, 
+        help='The suspicious URL to analyze'
+    )
+    
+    args = parser.parse_args()
+    
+    # Initialize and run the analysis
     phish_tool = PhishGuard()
+    phish_tool.run_analysis(args.target_url)
 
-    # --- Run the full analysis ---
-    phish_tool.run_analysis(notreal_url)
-
-    phish_tool.run_analysis(suspicious_url)
+if __name__ == "__main__":
+    main()
