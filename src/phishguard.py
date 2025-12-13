@@ -234,6 +234,23 @@ class PhishGuard:
         except Exception as e:
             print(f"[!] Page content comparison failed: {e}")
             return False
+    
+    def run_analysis(self, target_url: str):
+        """
+        Runs the full analysis on the target URL, including typo-squatting and content comparison.
+
+        Args:
+            target_url (str): The suspicious URL to analyze.
+        """
+        print(f"\n=== Starting Analysis for {target_url} ===")
+
+        self.check_typo_squatting(target_url, self.legitimate_domains)
+
+        print("\n--- Starting Content Similarity Check ---")
+        for legit_url in self.legitimate_domains:
+            self.compare_page_content(target_url, legit_url)
+
+        print(f"=== Analysis Completed for {target_url} ===\n")
 
 if __name__ == "__main__":
     url = "https://google.com"
